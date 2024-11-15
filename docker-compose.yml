@@ -1,0 +1,272 @@
+version: "3.8"
+services:
+  # Jellyfin Server
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin-server
+    user: "${PUID}:${PGID}"
+    networks:
+      - media_network
+    ports:
+      - 8096:8096/tcp
+      - 8920:8920/tcp
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/jellyfin:/config"
+      - "${MEDIA_CENTER_PATH}/cache/jellyfin:/cache"
+      - "${MEDIA_CENTER_PATH}/media/movies:/media/movies:ro"
+      - "${MEDIA_CENTER_PATH}/media/tv:/media/tv:ro"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    restart: 'unless-stopped'
+    devices:
+      - "/dev/dri:/dev/dri"
+    runtime: nvidia
+
+  # Jellyseerr
+  jellyseerr:
+    image: fallenbagel/jellyseerr
+    container_name: jellyseerr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - LOG_LEVEL=info
+    expose:
+      - 5055
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/jellyseerr:/app/config"
+    networks:
+      - media_network
+    restart: unless-stopped
+
+  # Radarr
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/radarr:/config"
+      - "${MEDIA_CENTER_PATH}/media/movies:/movies"
+      - "${MEDIA_CENTER_PATH}/downloads:/downloads"
+    networks:
+      - media_network
+    expose:
+      - 7878
+    restart: unless-stopped
+    depends_on:
+      - qbittorrent
+
+  # Sonarr
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/sonarr:/config"
+      - "${MEDIA_CENTER_PATH}/media/tv:/tv"
+      - "${MEDIA_CENTER_PATH}/downloads:/downloads"
+    networks:
+      - media_network
+    expose:
+      - 8989
+    restart: unless-stopped
+    depends_on:
+      - qbittorrent
+    
+  # Prowlarr
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/prowlarr:/config"
+    networks:
+      - media_network
+    expose:
+      - 9696
+    restart: unless-stopped
+    depends_on:
+      - radarr
+      - sonarr
+    
+  # Bazarr (Subtitles)
+  bazarr:
+    image: linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/bazarr:/config"
+      - "${MEDIA_CENTER_PATH}/media/movies:/movies"
+      - "${MEDIA_CENTER_PATH}/media/tv:/tv"
+    networks:
+      - media_network
+    expose:
+      - 6767
+    restart: unless-stopped
+
+# # Tdarr
+#   tdarr:
+#     image: haveagitgat/tdarr:latest
+#     container_name: tdarr
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+#       - UMASK_SET=002
+#       - serverIP=tdarr
+#       - serverPort=8266
+#       - webUIPort=8265
+#       - internalNode=true
+#       - inContainer=true
+#       - ffmpegVersion=6
+#       - nodeName=MyInternalNode
+#       - NVIDIA_DRIVER_CAPABILITIES=all
+#       - NVIDIA_VISIBLE_DEVICES=all
+#     volumes:
+#       - "${MEDIA_CENTER_PATH}/config/tdarr:/app/config"
+#       - "${MEDIA_CENTER_PATH}/media:/media"
+#     networks:
+#       - media_network
+#     expose:
+#       - 8265 # webUI port
+#       - 8266 # server port
+#     restart: unless-stopped
+#     devices:
+#       - /dev/dri:/dev/dri
+#     deploy:
+#       resources:
+#         reservations:
+#           devices:
+#           - driver: nvidia
+#             count: all
+#             capabilities: [gpu]
+
+  # Homarr
+  homarr:
+    container_name: homarr
+    image: ghcr.io/ajnart/homarr:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Optional, only if you want docker integration
+      - ${MEDIA_CENTER_PATH}/config/homarr:/app/data/configs
+      - ${MEDIA_CENTER_PATH}/config/homarr/icons:/app/public/icons
+      - ${MEDIA_CENTER_PATH}/config/homarr/data:/data
+    expose:
+      - 7575
+    networks:
+      - media_network
+
+  # qBittorrent
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=5080
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/qbittorrent:/config"
+      - "${MEDIA_CENTER_PATH}/downloads:/downloads"
+    networks:
+      - media_network
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 6882:6882
+      - 6882:6882/udp
+    expose:
+      - 5080
+    restart: unless-stopped
+
+  # Sabnzbd
+  sabnzbd:
+    image: linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/sabnzbd:/config"
+      - "${MEDIA_CENTER_PATH}/downloads:/downloads"
+    networks:
+      - media_network
+    expose:
+      - 8080
+    restart: unless-stopped
+  
+  # FlareSolverr
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=Europe/London
+    ports:
+      - "${PORT:-8191}:8191"
+    restart: unless-stopped
+    networks:
+      - media_network
+    
+
+  # Nginx
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - jellyfin
+      - jellyseerr
+      - radarr
+      - sonarr
+      - prowlarr
+      - bazarr
+      - qbittorrent
+      - sabnzbd
+      - homarr
+    restart: unless-stopped
+    networks:
+      - media_network
+
+  # # Ngrok
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   container_name: ngrok
+  #   ports:
+  #     - 4040:4040
+  #   depends_on:
+  #     - nginx
+  #   restart: unless-stopped
+  #   networks:
+  #     - media_network
+  #   environment:
+  #     - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  #   env_file:
+  #     - .env
+  #   command: http --domain=bulldog-perfect-violently.ngrok-free.app nginx:80
+
+networks:
+  media_network:
+    driver: bridge

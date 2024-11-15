@@ -1,5 +1,9 @@
 # Local Media Center
 
+![Screenshot from 2024-11-15 02-53-15](https://github.com/user-attachments/assets/abe65b97-89f3-4a13-aaed-1f2381413e27)
+![Screenshot from 2024-11-15 02-53-43](https://github.com/user-attachments/assets/dda2553f-f9e2-4387-b5ce-1ec5c16b4a89)
+
+
 A self-hosted, Docker-powered media center for users who want full control over their media libraries. This setup leverages various applications to manage, organize, and access movies, TV shows, and other media, with automated download, subtitle management, and a sleek frontend interface.
 
 ## Table of Contents

@@ -13,8 +13,8 @@ services:
     volumes:
       - "${MEDIA_CENTER_PATH}/config/jellyfin:/config"
       - "${MEDIA_CENTER_PATH}/cache/jellyfin:/cache"
-      - "${MEDIA_CENTER_PATH}/media/movies:/media/movies:ro"
-      - "${MEDIA_CENTER_PATH}/media/tv:/media/tv:ro"
+      - "${MEDIA_CENTER_PATH}/media/movies:/media/movies"
+      - "${MEDIA_CENTER_PATH}/media/tv:/media/tv"
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
     restart: 'unless-stopped'
@@ -195,38 +195,43 @@ services:
       - 5080
     restart: unless-stopped
 
-  # Sabnzbd
-  sabnzbd:
-    image: linuxserver/sabnzbd:latest
-    container_name: sabnzbd
+  # Wizarr
+  wizarr:
+    image: ghcr.io/wizarrrr/wizarr:latest
+    container_name: wizarr
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - "${MEDIA_CENTER_PATH}/config/sabnzbd:/config"
-      - "${MEDIA_CENTER_PATH}/downloads:/downloads"
+      - "${MEDIA_CENTER_PATH}/config/wizarr:/data/database"
     networks:
       - media_network
     expose:
-      - 8080
+      - 5690
     restart: unless-stopped
-  
-  # FlareSolverr
-  flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
+
+  # SuggestArr
+  suggestarr:
+    image: ciuse99/suggestarr:latest
+    container_name: suggestarr
+    restart: unless-stopped
     environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_HTML=${LOG_HTML:-false}
-      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-      - TZ=Europe/London
-    ports:
-      - "${PORT:-8191}:8191"
-    restart: unless-stopped
+      - SUGGESTARR_PORT=${SUGGESTARR_PORT:-5000}
+    volumes:
+      - "${MEDIA_CENTER_PATH}/config/suggestarr:/app/config/config_files"
     networks:
       - media_network
-    
+    expose:
+      - 5000
+    depends_on:
+      - radarr
+      - sonarr
+      - jellyseerr
 
   # Nginx
   nginx:
@@ -244,8 +249,11 @@ services:
       - prowlarr
       - bazarr
       - qbittorrent
-      - sabnzbd
+      # - sabnzbd
       - homarr
+      - wizarr
+      - suggestarr
+      - flaresolverr
     restart: unless-stopped
     networks:
       - media_network
